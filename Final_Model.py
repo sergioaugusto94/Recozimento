@@ -7,9 +7,10 @@ from sklearn.linear_model import LinearRegression
 
 dataset = pd.read_csv('test.csv')
 
-dataset = dataset.drop(columns = ['product-type']) 
 
 def preprocess(dataset):
+  dataset = dataset.drop(columns = ['product-type']) 
+  
   # Valores Faltantes
   dataset.replace('?', np.nan, inplace=True)
   dataset['formability'] = dataset['formability'].astype(float)
