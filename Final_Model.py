@@ -5,8 +5,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LinearRegression
 
 
-dataset = pd.read_csv('test.csv')
-
 
 def preprocess(dataset):
   dataset = dataset.drop(columns = ['product-type']) 
@@ -51,7 +49,15 @@ def random_input(df, coluna):
 
 
 def encoding(dataset): 
+  
   label_encoder = LabelEncoder()
+  
+    #---Imputação de valores por Regressão Linear
+  colunas_faltantes = []
+  for i in range(len(dataset.isnull().sum())):
+      if dataset.isnull().sum()[i] > 1:
+          colunas_faltantes.append(dataset.isnull().sum().index[i])
+        
   for coluna in colunas_faltantes:
       encoded = dataset.iloc[:, dataset.columns.get_loc(coluna)].values
       dataset[coluna + '_imputation'] = dataset[coluna]
@@ -87,24 +93,19 @@ def encoding(dataset):
 
   return dataset      
         
-dataset = preprocess(dataset)
 
-#---Imputação de valores por Regressão Linear
-colunas_faltantes = []
-for i in range(len(dataset.isnull().sum())):
-    if dataset.isnull().sum()[i] > 1:
-        colunas_faltantes.append(dataset.isnull().sum().index[i])
 
-dataset = encoding(dataset)
+
+def normalization(dataset):
   
+    x_data = dataset.iloc[:, 0:dataset.shape[1] - 1].values
+      ##--Escalonamento dos dados
+    from sklearn.preprocessing import StandardScaler 
+    scaler_data = StandardScaler()
+    x_data = scaler_data.fit_transform(x_data)
+  
+    return x_data
 
-x_data = dataset.iloc[:, 0:dataset.shape[1] - 1].values
-ids = dataset.iloc[:, dataset.shape[1] - 1].values
-
-    ##--Escalonamento dos dados
-from sklearn.preprocessing import StandardScaler 
-scaler_data = StandardScaler()
-x_data = scaler_data.fit_transform(x_data)
 
 
 #---- Importação dos Algoritmos
@@ -113,35 +114,51 @@ random = pickle.load(open('random_finalizado.sav', 'rb'))
 knn = pickle.load(open('knn_finalizado.sav', 'rb'))
 svm = pickle.load(open('svm_finalizado.sav', 'rb'))
 
-#---- Outputs dos Algoritmos
-previsoes_random = random.predict(x_data)
-previsoes_knn = knn.predict(x_data)
-previsoes_svm = svm.predict(x_data)
 
-#----- Decisão Final
-prev_final = []
-for i in range(x_data.shape[0]):
-    if previsoes_random[i] == 1:
-        prev_final.append(1)
-    elif previsoes_knn[i] == 2:
-        prev_final.append(2)
-    elif previsoes_random[i] == 0:
-        prev_final.append(0)
-    else:
-        prev_final.append(previsoes_svm[i])
-        
-prev_final2 = []
-for i in prev_final:
-    if i == 2:
-        prev_final2.append('ruim')
-    elif i == 1:
-        prev_final2.append('mediano')
-    else:
-        prev_final2.append('ideal')
+def outputs(x_data, df):
+    
+  ids = df.iloc[:, df.shape[1] - 1]
+
+    
+  #---- Outputs dos Algoritmos
+  previsoes_random = random.predict(x_data)
+  previsoes_knn = knn.predict(x_data)
+  previsoes_svm = svm.predict(x_data)
+
+  #----- Decisão Final
+  prev_final = []
+  for i in range(x_data.shape[0]):
+      if previsoes_random[i] == 1:
+          prev_final.append(1)
+      elif previsoes_knn[i] == 2:
+          prev_final.append(2)
+      elif previsoes_random[i] == 0:
+          prev_final.append(0)
+      else:
+          prev_final.append(previsoes_svm[i])
+
+  prev_final2 = []
+  for i in prev_final:
+      if i == 2:
+          prev_final2.append('ruim')
+      elif i == 1:
+          prev_final2.append('mediano')
+      else:
+          prev_final2.append('ideal')
 
 
-#--- Criação do Arquivo CSV Final
-dataset = np.column_stack((ids,prev_final2))
-previsao_final = pd.DataFrame(dataset,columns=['id','recozimento'])
-previsao_final.to_csv(r'previsao_final.csv', index = False)
+  #--- Criação do Arquivo CSV Final
+  dataset = np.column_stack((ids,prev_final2))
+  previsao_final = pd.DataFrame(dataset,columns=['id','recozimento'])
+  
+  return previsao_final
+
+
+def final_model(dataset):
+  dataset = preprocess(dataset)
+  dataset = encoding(dataset)
+  x_data = normalization(dataset)
+  out = outputs(x_data, dataset)
+  
+  return out
 
